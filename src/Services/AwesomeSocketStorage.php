@@ -4,13 +4,12 @@ namespace Services;
 
 use Storage\ACID\AtomicOperation;
 use Storage\Connection\Protocol;
-use Storage\NoPermissionsException;
 use Storage\Permissions;
 use Storage\Resource\Resource;
 use Storage\Storage;
 use Storage\StorageResource;
 
-class RemoteCloudStorage implements Storage, AtomicOperation
+class AwesomeSocketStorage implements Storage, AtomicOperation
 {
 
     /**
@@ -24,13 +23,12 @@ class RemoteCloudStorage implements Storage, AtomicOperation
     private $protocol;
 
 
-    public function __construct()
+    public function __construct(Permissions $permissions)
     {
-        $permissions = new Permissions(Permissions::WRITE);
         $this->protocol = new Protocol(
-            Protocol::TYPE_URL,
+            Protocol::TYPE_SOCKET,
             $permissions,
-            'http://some-remote-service.com/api/write');
+            'http://some-remote-host.com:44550/api/write');
         $this->resource = new Resource($this);
     }
 
@@ -48,15 +46,11 @@ class RemoteCloudStorage implements Storage, AtomicOperation
      */
     public function close()
     {
-        try{
+        if ($this->protocol->getPermissions()->is(Permissions::READ)) {
             $this->resource->getInputStream()->close();
-        } catch (NoPermissionsException $e) {
-
         }
-        try {
+        if ($this->protocol->getPermissions()->is(Permissions::WRITE)) {
             $this->resource->getOutputStream()->close();
-        } catch (NoPermissionsException $e) {
-
         }
     }
 
@@ -67,7 +61,7 @@ class RemoteCloudStorage implements Storage, AtomicOperation
      */
     public function getName()
     {
-        return 'Some remote cloud storage';
+        return 'Some remote socket storage';
     }
 
     /**

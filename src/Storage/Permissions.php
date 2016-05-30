@@ -11,9 +11,9 @@ class Permissions
 
     public function __construct($permission)
     {
-        $all = READ | WRITE;
+        $all = self::READ | self::WRITE;
         if (!($all & $permission )) {
-            throw new StorageException('Undefined permission');
+            throw new \InvalidArgumentException('Undefined permission');
         }
         $this->permission = $permission;
     }

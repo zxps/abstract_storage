@@ -4,13 +4,12 @@ namespace Services;
 
 use Storage\ACID\AtomicOperation;
 use Storage\Connection\Protocol;
-use Storage\NoPermissionsException;
 use Storage\Permissions;
 use Storage\Resource\Resource;
 use Storage\Storage;
 use Storage\StorageResource;
 
-class RemoteSocketStorage implements Storage, AtomicOperation
+class AnyDatabaseStorage implements Storage, AtomicOperation
 {
 
     /**
@@ -24,13 +23,18 @@ class RemoteSocketStorage implements Storage, AtomicOperation
     private $protocol;
 
 
-    public function __construct()
+    public function __construct(Permissions $permissions)
     {
-        $permissions = new Permissions(Permissions::WRITE);
         $this->protocol = new Protocol(
-            Protocol::TYPE_SOCKET,
+            Protocol::TYPE_DB,
             $permissions,
-            'http://some-remote-host.com:44550/api/write');
+            [
+                'dsn' => '',
+                'user' => 'dbUser',
+                'password' => 'dbPassword',
+                'table' => 'table_name',
+                'query' => 'Select * from table_name Join another_table Where some_field > 150'
+            ]);
         $this->resource = new Resource($this);
     }
 
@@ -48,15 +52,11 @@ class RemoteSocketStorage implements Storage, AtomicOperation
      */
     public function close()
     {
-        try{
+        if ($this->protocol->getPermissions()->is(Permissions::READ)) {
             $this->resource->getInputStream()->close();
-        } catch (NoPermissionsException $e) {
-
         }
-        try {
+        if ($this->protocol->getPermissions()->is(Permissions::WRITE)) {
             $this->resource->getOutputStream()->close();
-        } catch (NoPermissionsException $e) {
-
         }
     }
 
@@ -67,7 +67,7 @@ class RemoteSocketStorage implements Storage, AtomicOperation
      */
     public function getName()
     {
-        return 'Some remote cloud storage';
+        return 'My Local Database Storage';
     }
 
     /**
@@ -83,7 +83,7 @@ class RemoteSocketStorage implements Storage, AtomicOperation
      */
     public function begin()
     {
-        // @TODO Call before all operations
+        // @TODO Calls before all operations
     }
 
     /**
@@ -101,5 +101,4 @@ class RemoteSocketStorage implements Storage, AtomicOperation
     {
         // @TODO: Rollback if something went wrong
     }
-
 }

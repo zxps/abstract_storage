@@ -4,13 +4,12 @@ namespace Services;
 
 use Storage\ACID\AtomicOperation;
 use Storage\Connection\Protocol;
-use Storage\NoPermissionsException;
 use Storage\Permissions;
 use Storage\Resource\Resource;
 use Storage\Storage;
 use Storage\StorageResource;
 
-class MyLocalDatabaseStorage implements Storage, AtomicOperation
+class AwesomeCloudStorage implements Storage, AtomicOperation
 {
 
     /**
@@ -24,19 +23,12 @@ class MyLocalDatabaseStorage implements Storage, AtomicOperation
     private $protocol;
 
 
-    public function __construct()
+    public function __construct(Permissions $permissions)
     {
-        $permissions = new Permissions(Permissions::READ);
         $this->protocol = new Protocol(
-            Protocol::TYPE_DB,
+            Protocol::TYPE_URL,
             $permissions,
-            [
-                'dsn' => '',
-                'user' => 'dbUser',
-                'password' => 'dbPassword',
-                'table' => 'table_name',
-                'query' => 'Select * from table_name Join another_table Where some_field > 150'
-            ]);
+            'http://some-remote-service.com/api/write');
         $this->resource = new Resource($this);
     }
 
@@ -54,15 +46,11 @@ class MyLocalDatabaseStorage implements Storage, AtomicOperation
      */
     public function close()
     {
-        try{
+        if ($this->protocol->getPermissions()->is(Permissions::READ)) {
             $this->resource->getInputStream()->close();
-        } catch (NoPermissionsException $e) {
-
         }
-        try {
+        if ($this->protocol->getPermissions()->is(Permissions::WRITE)) {
             $this->resource->getOutputStream()->close();
-        } catch (NoPermissionsException $e) {
-
         }
     }
 
@@ -73,7 +61,7 @@ class MyLocalDatabaseStorage implements Storage, AtomicOperation
      */
     public function getName()
     {
-        return 'My Local Database Storage';
+        return 'Some remote cloud storage';
     }
 
     /**
@@ -89,7 +77,7 @@ class MyLocalDatabaseStorage implements Storage, AtomicOperation
      */
     public function begin()
     {
-        // @TODO Calls before all operations
+        // @TODO Call before all operations
     }
 
     /**
@@ -107,4 +95,5 @@ class MyLocalDatabaseStorage implements Storage, AtomicOperation
     {
         // @TODO: Rollback if something went wrong
     }
+
 }
