@@ -101,4 +101,9 @@ class Resource
         }
         return $this->input;
     }
+
+    public function __destruct()
+    {
+        $this->storage->close();
+    }
 }

@@ -2,6 +2,7 @@
 
 namespace Storage\Transmitter;
 
+use Storage\NoPermissionsException;
 use Storage\Resource\Resource;
 
 class MultiTransmitter extends Transmitter
@@ -21,20 +22,21 @@ class MultiTransmitter extends Transmitter
         $this->destinations = $destinations;
     }
 
-    public function transmit()
+    /**
+     * @override
+     * @throws NoPermissionsException
+     */
+    public function start()
     {
-        $this->atomic($this->destinations);
-        foreach($this->source->getInputStream() as $data) {
-            try{
-                foreach($this->destinations as $destination) {
-                    $this->write($destination->getOutputStream(), $data);
-                }
-            } catch (StorageException $e) {
-                $this->atomicRollback($this->destinations);
-                throw new \RuntimeException('Unable to transmit. Reason: ' . $e->getMessage());
-            }
+        foreach($this->destinations as $destination) {
+            $this->execute(
+                $this->source,
+                $destination,
+                $this->source->getInputStream(),
+                $destination->getOutputStream()
+            );
         }
-        $this->atomicApply($this->destinations);
+
     }
 
 }
